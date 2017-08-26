@@ -6,7 +6,7 @@ loadData <-function(type){
     yfile <- switch(type,test="./test/y_test.txt",train="./train/y_train.txt")
     sfile <- switch(type,test="./test/subject_test.txt",train="./train/subject_train.txt")
     feature_names <- read.table("features.txt",header = F,stringsAsFactors = F,col.names = c("n","name"))
-    y <- read.csv(yfile,header = F,stringsAsFactors = F,col.names = c("y"))
+    y <- read.csv(yfile,header = F,stringsAsFactors = F,col.names = c("activity"))
     subject <- read.csv(sfile,header = F,stringsAsFactors = F,col.names = c("subject"))
     x <- read_file(xfile)
     x <- str_trim(x)
@@ -29,7 +29,8 @@ mergett <- function(){
   train <- loadData("train")
   test <- with(test,cbind(x,y,subject))
   train <- with(train,cbind(x,y,subject))
-  rbind(train,test)
+  tt <- rbind(train,test)
+  nameActivity(tt)
 }
 #tt data.frame format
 # +++++++++++++++++++++++++++++++++++++++
@@ -45,22 +46,32 @@ nameActivity <- function(tt){
   #tt <- mergett()
   activities <- read.table("activity_labels.txt",header = F,
                            col.names = c("no","name"),stringsAsFactors = F)
-  tt$y <- factor(tt$y)
-  levels(tt$y) <- activities$name
+  tt$activity <- factor(tt$activity)
+  levels(tt$activity) <- activities$name
   return(tt)
 }
 
 #Extracts only the measurements on the mean and standard deviation for each measurement
 getMeanAndStd <- function(tt){
-  return(tt[,grep("mean|std",names(tt))])
+  #tt <- mergett()
+  #tt <- nameActivity(tt)
+  #return(tt[,grep("mean|std",names(tt))])
+  tt <- tt[,grep("mean|std",names(tt))]
+  names(tt) <- sub("()","",names(tt),fixed = T)#delete '()' in columns' name
+  return(tt)
 }
 
 #From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject.
 getAverages <- function(){
   tt <- mergett()
-  tt <- nameActivity(tt)
   ms <- getMeanAndStd(tt)
   ms$subject <- tt$subject
-  ms$y <- tt$y
-  group_by(ms,y,subject) %>%summarise_all(mean)
+  ms$activity <- tt$activity
+  group_by(ms,activity,subject) %>%summarise_all(mean)
+}
+
+#save averages result
+saveResult <- function(){
+  dataset <- getAverages()
+  write.table(dataset,row.name=FALSE,"dataset.txt")
 }
